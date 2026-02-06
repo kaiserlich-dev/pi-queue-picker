@@ -1,45 +1,38 @@
 # pi-queue-picker
 
-A [pi](https://github.com/badlogic/pi-mono) extension that replaces the default queue behavior with an interactive picker. Instead of memorizing separate shortcuts for steering vs follow-up, just press **Enter** — if the agent is busy, a picker appears.
+A [pi](https://github.com/mariozechner/pi) extension that lets you choose between **Steer** and **Follow-up** when queuing messages while the agent is busy.
 
-## How it works
+## What it does
 
-| Agent state | Enter does... |
-|-------------|---------------|
-| **Idle** | Submits normally (no change) |
-| **Busy** | Opens the queue picker |
+By default, pressing Enter while the agent is working queues your message as a "steer" (interrupts and redirects). This extension adds an interactive picker so you can choose:
 
-When the picker is open:
+- **Steer** — interrupt and redirect the agent
+- **Follow-up** — queue for after the current task finishes
 
-| Key | Action |
-|-----|--------|
-| **Tab** | Toggle between *Steer* and *Follow-up* |
-| **Enter** | Send with the selected mode |
-| **Escape** | Cancel and restore your text |
+## Usage
 
-**Steer** interrupts the agent after the current tool call (default).
-**Follow-up** waits until the agent finishes all work before delivering your message.
+When the agent is idle, Enter submits normally. When the agent is busy:
 
-A mode indicator appears in a widget above the editor and in the editor border while picking.
+1. Type your message and press **Enter**
+2. A picker appears: `● Steer  ○ Follow-up`
+3. **Tab** to switch between modes
+4. **Enter** to send with the selected mode
+5. **Escape** to cancel (restores your text)
 
 ## Install
 
-```bash
-pi install git:github.com/kaiserlich-dev/pi-queue-picker
+Add to your `~/.pi/settings.json`:
+
+```json
+{
+  "packages": [
+    "github:kaiserlich-dev/pi-queue-picker"
+  ]
+}
 ```
 
-Or try it without installing:
+Then restart pi or run `/reload`.
 
-```bash
-pi -e git:github.com/kaiserlich-dev/pi-queue-picker
-```
+## Compatibility
 
-## Uninstall
-
-```bash
-pi remove git:github.com/kaiserlich-dev/pi-queue-picker
-```
-
-## License
-
-MIT
+Works alongside other extensions that customize the editor (e.g. `pi-powerline-footer`). Uses the `input` event API instead of replacing the editor component.
