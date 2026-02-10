@@ -36,3 +36,9 @@ Then restart pi or run `/reload`.
 ## Compatibility
 
 Works alongside other extensions that customize the editor (e.g. `pi-powerline-footer`). Uses the `input` event API instead of replacing the editor component.
+
+### SSH / Mobile Terminals
+
+The picker is automatically disabled over SSH (detected via `SSH_TTY`/`SSH_CONNECTION`), since mobile terminal apps like Terminus can't handle the custom TUI component. Messages fall through to the default steer behavior.
+
+To manually disable the picker, set `PI_QUEUE_PICKER_DISABLE=1`.

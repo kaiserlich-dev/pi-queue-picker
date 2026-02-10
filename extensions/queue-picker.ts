@@ -15,8 +15,16 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { matchesKey } from "@mariozechner/pi-tui";
 
+/** Detect limited terminals (SSH from mobile apps like Terminus) where custom TUI components crash. */
+function isLimitedTerminal(): boolean {
+	if (process.env.PI_QUEUE_PICKER_DISABLE === "1") return true;
+	if (process.env.SSH_TTY || process.env.SSH_CONNECTION) return true;
+	return false;
+}
+
 export default function (pi: ExtensionAPI) {
 	let uiRef: any = null;
+	let pendingSend = false;
 
 	pi.on("session_start", (_event, ctx) => {
 		uiRef = ctx.ui;
@@ -27,12 +35,23 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("input", async (event, ctx) => {
+		// Swallow the re-fired input event from our own sendUserMessage call
+		if (pendingSend && event.source === "extension") {
+			pendingSend = false;
+			return { action: "handled" as const };
+		}
+
 		// Only intercept interactive input when agent is busy
 		if (event.source !== "interactive" || ctx.isIdle()) {
 			return { action: "continue" as const };
 		}
 
 		if (!ctx.hasUI || !event.text.trim()) {
+			return { action: "continue" as const };
+		}
+
+		// Skip picker on limited terminals (SSH/mobile) — fall through to default steer
+		if (isLimitedTerminal()) {
 			return { action: "continue" as const };
 		}
 
@@ -82,6 +101,7 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		// Send with the chosen mode
+		pendingSend = true;
 		pi.sendUserMessage(event.text, { deliverAs: mode });
 		const label = mode === "steer" ? "Steering" : "Follow-up";
 		ctx.ui.notify(`${label}: ${event.text}`, "info");
