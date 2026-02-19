@@ -7,7 +7,7 @@
  *   - Escape to cancel and restore your text
  *
  * Follow-up messages are held in an internal buffer so you can edit them
- * before they're delivered. Use Ctrl+Shift+Q (or /edit-queue) to:
+ * before they're delivered. Press Alt+Q (or /edit-queue) to open a popup:
  *   - Toggle mode (follow-up → steer sends immediately)
  *   - Delete messages from the queue
  *
@@ -23,7 +23,7 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { matchesKey } from "@mariozechner/pi-tui";
+import { matchesKey, visibleWidth } from "@mariozechner/pi-tui";
 
 /** Detect limited terminals (SSH from mobile apps like Terminus) where custom TUI components crash. */
 function isLimitedTerminal(): boolean {
@@ -95,7 +95,7 @@ export default function (pi: ExtensionAPI) {
 				lines.push(
 					theme.fg(
 						"dim",
-						"  ↳ Ctrl+Q to edit queue"
+						"  ↳ Alt+Q to edit queue"
 					)
 				);
 				return {
@@ -111,7 +111,7 @@ export default function (pi: ExtensionAPI) {
 		updateWidget();
 	}
 
-	// --- Edit queue UI ---
+	// --- Edit queue overlay popup ---
 
 	async function editQueue(ctx: any) {
 		if (buffer.length === 0) {
@@ -131,15 +131,58 @@ export default function (pi: ExtensionAPI) {
 				let items = buffer.map((m) => ({ ...m }));
 				let selected = 0;
 
+				const BOX_WIDTH = 72;
+				const innerW = BOX_WIDTH - 2;
+
+				function pad(s: string, len: number): string {
+					const vis = visibleWidth(s);
+					return (
+						s +
+						" ".repeat(Math.max(0, len - vis))
+					);
+				}
+
+				function row(content: string): string {
+					return (
+						theme.fg("border", "│") +
+						pad(content, innerW) +
+						theme.fg("border", "│")
+					);
+				}
+
+				function truncate(
+					s: string,
+					max: number
+				): string {
+					if (s.length <= max) return s;
+					return s.slice(0, max - 1) + "…";
+				}
+
 				return {
 					render(_width: number): string[] {
 						const lines: string[] = [];
-						lines.push(theme.bold("  Edit Queue"));
-						lines.push("");
+
+						// Top border
+						lines.push(
+							theme.fg(
+								"border",
+								`╭${"─".repeat(innerW)}╮`
+							)
+						);
+
+						// Title
+						lines.push(
+							row(
+								` ${theme.bold(theme.fg("accent", "📋 Message Queue"))}`
+							)
+						);
+						lines.push(row(""));
 
 						if (items.length === 0) {
 							lines.push(
-								theme.fg("dim", "  (empty)")
+								row(
+									`  ${theme.fg("dim", "Queue is empty")}`
+								)
 							);
 						} else {
 							for (
@@ -148,44 +191,88 @@ export default function (pi: ExtensionAPI) {
 								i++
 							) {
 								const item = items[i];
-								const cursor =
-									i === selected
-										? theme.fg(
-												"accent",
-												"❯"
-											)
-										: " ";
-								const modeLabel =
+								const isSel =
+									i === selected;
+
+								const cursor = isSel
+									? theme.fg(
+											"accent",
+											" ❯ "
+										)
+									: "   ";
+
+								const modeTag =
 									item.mode === "steer"
 										? theme.fg(
 												"warning",
-												"⚡ Steer    "
+												"⚡ STEER "
 											)
 										: theme.fg(
-												"accent",
-												"📋 Follow-up"
+												"success",
+												"📋 FOLLOW"
 											);
+
+								const text = truncate(
+									item.text,
+									innerW - 18
+								);
+								const textStyled =
+									isSel
+										? theme.fg(
+												"text",
+												text
+											)
+										: theme.fg(
+												"dim",
+												text
+											);
+
 								lines.push(
-									`  ${cursor} ${modeLabel}  ${item.text}`
+									row(
+										`${cursor}${modeTag}  ${textStyled}`
+									)
 								);
 							}
 						}
 
-						lines.push("");
+						lines.push(row(""));
+
+						// Help
+						const help = [
+							`${theme.fg("accent", "↑↓")} navigate`,
+							`${theme.fg("accent", "Tab")} switch mode`,
+							`${theme.fg("accent", "d")} delete`,
+							`${theme.fg("accent", "Enter")} confirm`,
+							`${theme.fg("accent", "Esc")} cancel`,
+						].join(
+							theme.fg("dim", "  ·  ")
+						);
+						lines.push(
+							row(`  ${help}`)
+						);
+
+						// Bottom border
 						lines.push(
 							theme.fg(
-								"muted",
-								"  ↑↓ navigate · Tab switch mode · d delete · Enter confirm · Esc cancel"
+								"border",
+								`╰${"─".repeat(innerW)}╯`
 							)
 						);
+
 						return lines;
 					},
 					invalidate() {},
 					handleInput(data: string) {
 						if (items.length === 0) {
 							if (
-								matchesKey(data, "return") ||
-								matchesKey(data, "escape")
+								matchesKey(
+									data,
+									"return"
+								) ||
+								matchesKey(
+									data,
+									"escape"
+								)
 							) {
 								done([]);
 							}
@@ -241,7 +328,8 @@ export default function (pi: ExtensionAPI) {
 						}
 					},
 				};
-			}
+			},
+			{ overlay: true }
 		);
 
 		editingQueue = false;
@@ -398,7 +486,7 @@ export default function (pi: ExtensionAPI) {
 
 	// --- Shortcut & Command ---
 
-	pi.registerShortcut("ctrl+q", {
+	pi.registerShortcut("alt+q", {
 		description: "Edit queued follow-up messages",
 		handler: (ctx) => editQueue(ctx),
 	});
