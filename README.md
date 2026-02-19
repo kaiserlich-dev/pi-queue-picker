@@ -27,7 +27,7 @@ The picker remembers your last chosen mode as the default.
 
 Follow-up messages stay in an editable buffer until the agent finishes. To edit them:
 
-- Press **Ctrl+Shift+Q** or type `/edit-queue`
+- Press **Ctrl+Q** or type `/edit-queue`
 - The edit queue UI shows all buffered follow-ups
 - **↑↓** to navigate between messages
 - **Tab** to toggle mode (follow-up ↔ steer)
@@ -41,7 +41,7 @@ A widget above the editor shows buffered follow-ups:
 ```
   📋 Follow-up: also check the tests
   📋 Follow-up: and update the docs
-  ↳ Ctrl+Shift+Q to edit queue
+  ↳ Ctrl+Q to edit queue
 ```
 
 ### How delivery works

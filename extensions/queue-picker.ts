@@ -95,7 +95,7 @@ export default function (pi: ExtensionAPI) {
 				lines.push(
 					theme.fg(
 						"dim",
-						"  ↳ Ctrl+Shift+Q to edit queue"
+						"  ↳ Ctrl+Q to edit queue"
 					)
 				);
 				return {
@@ -398,7 +398,7 @@ export default function (pi: ExtensionAPI) {
 
 	// --- Shortcut & Command ---
 
-	pi.registerShortcut("ctrl+shift+q", {
+	pi.registerShortcut("ctrl+q", {
 		description: "Edit queued follow-up messages",
 		handler: (ctx) => editQueue(ctx),
 	});
