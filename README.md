@@ -9,6 +9,8 @@ By default, pressing Enter while the agent is working queues your message as a "
 - **Steer** — interrupt and redirect the agent
 - **Follow-up** — queue for after the current task finishes
 
+Follow-up messages are **editable** — they're held in an internal buffer until the agent finishes, so you can change your mind before they're delivered.
+
 ## Usage
 
 When the agent is idle, Enter submits normally. When the agent is busy:
@@ -18,6 +20,35 @@ When the agent is idle, Enter submits normally. When the agent is busy:
 3. **Tab** to switch between modes
 4. **Enter** to send with the selected mode
 5. **Escape** to cancel (restores your text)
+
+The picker remembers your last chosen mode as the default.
+
+### Editing queued follow-ups
+
+Follow-up messages stay in an editable buffer until the agent finishes. To edit them:
+
+- Press **Ctrl+Shift+Q** or type `/edit-queue`
+- The edit queue UI shows all buffered follow-ups
+- **↑↓** to navigate between messages
+- **Tab** to toggle mode (follow-up ↔ steer)
+- **d** to delete a message
+- **Enter** to confirm changes
+- **Escape** to cancel
+
+Messages toggled to **Steer** are sent immediately when you confirm. Deleted messages are discarded.
+
+A widget above the editor shows buffered follow-ups:
+```
+  📋 Follow-up: also check the tests
+  📋 Follow-up: and update the docs
+  ↳ Ctrl+Shift+Q to edit queue
+```
+
+### How delivery works
+
+- **Steer** messages are sent to pi immediately (they interrupt the agent)
+- **Follow-up** messages are held in the extension's buffer and flushed one at a time when the agent finishes (`agent_end` event)
+- If the agent finishes while the picker is shown, follow-ups are flushed immediately after selection
 
 ## Install
 

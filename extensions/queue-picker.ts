@@ -6,6 +6,16 @@
  *   - Enter to send with the selected mode
  *   - Escape to cancel and restore your text
  *
+ * Follow-up messages are held in an internal buffer so you can edit them
+ * before they're delivered. Use Ctrl+Shift+Q (or /edit-queue) to:
+ *   - Toggle mode (follow-up → steer sends immediately)
+ *   - Delete messages from the queue
+ *
+ * Follow-ups are flushed one at a time when the agent finishes.
+ * Steer messages are sent immediately (they interrupt the agent).
+ *
+ * The picker remembers your last chosen mode as the default.
+ *
  * When the agent is idle, messages submit normally.
  *
  * Uses the `input` event instead of a custom editor, so it's compatible
@@ -22,26 +32,267 @@ function isLimitedTerminal(): boolean {
 	return false;
 }
 
+interface BufferedMessage {
+	text: string;
+	mode: "steer" | "followUp";
+	id: string;
+}
+
+let idCounter = 0;
+function nextId(): string {
+	return `qp-${Date.now()}-${idCounter++}`;
+}
+
 export default function (pi: ExtensionAPI) {
 	let uiRef: any = null;
-	let pendingSend = false;
+	let lastMode: "steer" | "followUp" = "steer";
+	let buffer: BufferedMessage[] = [];
+	let editingQueue = false;
+
+	// --- Helpers ---
+
+	/**
+	 * Send a message to pi via sendUserMessage.
+	 *
+	 * pi.sendUserMessage() calls session.prompt() internally, which fires
+	 * the input event. Our handler returns "continue" for non-interactive
+	 * sources, so prompt() proceeds to queue/send the message normally.
+	 */
+	function sendToPi(
+		text: string,
+		isIdle: boolean,
+		mode: "steer" | "followUp"
+	) {
+		if (isIdle) {
+			pi.sendUserMessage(text);
+		} else {
+			pi.sendUserMessage(text, { deliverAs: mode });
+		}
+	}
+
+	function flushOneFollowUp(isIdle: boolean) {
+		if (buffer.length === 0) return;
+		const next = buffer.shift()!;
+		sendToPi(next.text, isIdle, "followUp");
+		updateWidget();
+	}
+
+	function updateWidget() {
+		if (!uiRef) return;
+		if (buffer.length === 0) {
+			uiRef.setWidget("queue-picker", undefined);
+			return;
+		}
+		uiRef.setWidget(
+			"queue-picker",
+			(_tui: any, theme: any) => {
+				const lines = buffer.map((msg) =>
+					theme.fg(
+						"dim",
+						`  📋 Follow-up: ${msg.text}`
+					)
+				);
+				lines.push(
+					theme.fg(
+						"dim",
+						"  ↳ Ctrl+Shift+Q to edit queue"
+					)
+				);
+				return {
+					render: () => lines,
+					invalidate() {},
+				};
+			}
+		);
+	}
+
+	function clearBuffer() {
+		buffer = [];
+		updateWidget();
+	}
+
+	// --- Edit queue UI ---
+
+	async function editQueue(ctx: any) {
+		if (buffer.length === 0) {
+			ctx.ui.notify("No follow-up messages in queue", "info");
+			return;
+		}
+
+		editingQueue = true;
+
+		const result: BufferedMessage[] | null = await ctx.ui.custom(
+			(
+				tui: any,
+				theme: any,
+				_kb: any,
+				done: (v: BufferedMessage[] | null) => void
+			) => {
+				let items = buffer.map((m) => ({ ...m }));
+				let selected = 0;
+
+				return {
+					render(_width: number): string[] {
+						const lines: string[] = [];
+						lines.push(theme.bold("  Edit Queue"));
+						lines.push("");
+
+						if (items.length === 0) {
+							lines.push(
+								theme.fg("dim", "  (empty)")
+							);
+						} else {
+							for (
+								let i = 0;
+								i < items.length;
+								i++
+							) {
+								const item = items[i];
+								const cursor =
+									i === selected
+										? theme.fg(
+												"accent",
+												"❯"
+											)
+										: " ";
+								const modeLabel =
+									item.mode === "steer"
+										? theme.fg(
+												"warning",
+												"⚡ Steer    "
+											)
+										: theme.fg(
+												"accent",
+												"📋 Follow-up"
+											);
+								lines.push(
+									`  ${cursor} ${modeLabel}  ${item.text}`
+								);
+							}
+						}
+
+						lines.push("");
+						lines.push(
+							theme.fg(
+								"muted",
+								"  ↑↓ navigate · Tab switch mode · d delete · Enter confirm · Esc cancel"
+							)
+						);
+						return lines;
+					},
+					invalidate() {},
+					handleInput(data: string) {
+						if (items.length === 0) {
+							if (
+								matchesKey(data, "return") ||
+								matchesKey(data, "escape")
+							) {
+								done([]);
+							}
+							return;
+						}
+
+						if (
+							matchesKey(data, "up") ||
+							matchesKey(data, "k")
+						) {
+							selected = Math.max(
+								0,
+								selected - 1
+							);
+							tui.requestRender();
+						} else if (
+							matchesKey(data, "down") ||
+							matchesKey(data, "j")
+						) {
+							selected = Math.min(
+								items.length - 1,
+								selected + 1
+							);
+							tui.requestRender();
+						} else if (matchesKey(data, "tab")) {
+							items[selected].mode =
+								items[selected].mode ===
+								"steer"
+									? "followUp"
+									: "steer";
+							tui.requestRender();
+						} else if (
+							data === "d" ||
+							data === "D"
+						) {
+							items.splice(selected, 1);
+							selected = Math.min(
+								selected,
+								Math.max(
+									0,
+									items.length - 1
+								)
+							);
+							tui.requestRender();
+						} else if (
+							matchesKey(data, "return")
+						) {
+							done(items);
+						} else if (
+							matchesKey(data, "escape")
+						) {
+							done(null);
+						}
+					},
+				};
+			}
+		);
+
+		editingQueue = false;
+
+		if (result === null) {
+			return;
+		}
+
+		const newSteers = result.filter(
+			(m: BufferedMessage) => m.mode === "steer"
+		);
+		const remainingFollowUps = result.filter(
+			(m: BufferedMessage) => m.mode === "followUp"
+		);
+
+		buffer = remainingFollowUps;
+
+		const isIdle = ctx.isIdle();
+		for (const msg of newSteers) {
+			sendToPi(msg.text, isIdle, "steer");
+			ctx.ui.notify(`Steering: ${msg.text}`, "info");
+		}
+
+		updateWidget();
+
+		if (ctx.isIdle() && buffer.length > 0) {
+			flushOneFollowUp(true);
+		}
+	}
+
+	// --- Events ---
 
 	pi.on("session_start", (_event, ctx) => {
 		uiRef = ctx.ui;
+		clearBuffer();
 	});
 
 	pi.on("session_switch", (_event, ctx) => {
 		uiRef = ctx.ui;
+		clearBuffer();
+	});
+
+	pi.on("agent_end", async (_event, ctx) => {
+		if (editingQueue || buffer.length === 0) return;
+		flushOneFollowUp(ctx.isIdle());
 	});
 
 	pi.on("input", async (event, ctx) => {
-		// Swallow the re-fired input event from our own sendUserMessage call
-		if (pendingSend && event.source === "extension") {
-			pendingSend = false;
-			return { action: "handled" as const };
-		}
-
-		// Only intercept interactive input when agent is busy
+		// Only intercept interactive input when agent is busy.
+		// Extension-sourced messages (from our sendUserMessage calls) pass
+		// through to prompt() for normal queueing/delivery.
 		if (event.source !== "interactive" || ctx.isIdle()) {
 			return { action: "continue" as const };
 		}
@@ -50,7 +301,6 @@ export default function (pi: ExtensionAPI) {
 			return { action: "continue" as const };
 		}
 
-		// Skip picker on limited terminals (SSH/mobile) — fall through to default steer
 		if (isLimitedTerminal()) {
 			return { action: "continue" as const };
 		}
@@ -58,22 +308,37 @@ export default function (pi: ExtensionAPI) {
 		// Agent is busy — show the picker
 		const mode = await ctx.ui.custom<"steer" | "followUp" | null>(
 			(tui, theme, _kb, done) => {
-				let selected: "steer" | "followUp" = "steer";
+				let selected: "steer" | "followUp" = lastMode;
 
-				function render(width: number): string[] {
+				function render(_width: number): string[] {
 					const steer =
 						selected === "steer"
-							? theme.bold(theme.fg("accent", "● Steer"))
+							? theme.bold(
+									theme.fg(
+										"accent",
+										"● Steer"
+									)
+								)
 							: theme.fg("dim", "○ Steer");
 					const follow =
 						selected === "followUp"
-							? theme.bold(theme.fg("accent", "● Follow-up"))
-							: theme.fg("dim", "○ Follow-up");
+							? theme.bold(
+									theme.fg(
+										"accent",
+										"● Follow-up"
+									)
+								)
+							: theme.fg(
+									"dim",
+									"○ Follow-up"
+								);
 					const hint = theme.fg(
 						"muted",
 						"Tab switch · Enter send · Esc cancel"
 					);
-					return [`  ${steer}  ${follow}    ${hint}`];
+					return [
+						`  ${steer}  ${follow}    ${hint}`,
+					];
 				}
 
 				return {
@@ -82,11 +347,17 @@ export default function (pi: ExtensionAPI) {
 					handleInput(data: string) {
 						if (matchesKey(data, "tab")) {
 							selected =
-								selected === "steer" ? "followUp" : "steer";
+								selected === "steer"
+									? "followUp"
+									: "steer";
 							tui.requestRender();
-						} else if (matchesKey(data, "return")) {
+						} else if (
+							matchesKey(data, "return")
+						) {
 							done(selected);
-						} else if (matchesKey(data, "escape")) {
+						} else if (
+							matchesKey(data, "escape")
+						) {
 							done(null);
 						}
 					},
@@ -95,16 +366,45 @@ export default function (pi: ExtensionAPI) {
 		);
 
 		if (mode === null) {
-			// Cancelled — restore text to editor
 			ctx.ui.setEditorText(event.text);
 			return { action: "handled" as const };
 		}
 
-		// Send with the chosen mode
-		pendingSend = true;
-		pi.sendUserMessage(event.text, { deliverAs: mode });
-		const label = mode === "steer" ? "Steering" : "Follow-up";
-		ctx.ui.notify(`${label}: ${event.text}`, "info");
+		lastMode = mode;
+
+		if (mode === "steer") {
+			sendToPi(event.text, false, "steer");
+			ctx.ui.notify(`Steering: ${event.text}`, "info");
+		} else {
+			buffer.push({
+				text: event.text,
+				mode: "followUp",
+				id: nextId(),
+			});
+			updateWidget();
+			ctx.ui.notify(
+				`Queued follow-up: ${event.text}`,
+				"info"
+			);
+
+			// If agent became idle while picker was shown, flush immediately
+			if (ctx.isIdle()) {
+				flushOneFollowUp(true);
+			}
+		}
+
 		return { action: "handled" as const };
+	});
+
+	// --- Shortcut & Command ---
+
+	pi.registerShortcut("ctrl+shift+q", {
+		description: "Edit queued follow-up messages",
+		handler: (ctx) => editQueue(ctx),
+	});
+
+	pi.registerCommand("edit-queue", {
+		description: "Edit queued follow-up messages",
+		handler: (_args, ctx) => editQueue(ctx),
 	});
 }
