@@ -121,6 +121,8 @@ export default function (pi: ExtensionAPI) {
 
 		editingQueue = true;
 
+		const BOX_WIDTH = 56;
+
 		const result: BufferedMessage[] | null = await ctx.ui.custom(
 			(
 				tui: any,
@@ -130,8 +132,6 @@ export default function (pi: ExtensionAPI) {
 			) => {
 				let items = buffer.map((m) => ({ ...m }));
 				let selected = 0;
-
-				const BOX_WIDTH = 72;
 				const innerW = BOX_WIDTH - 2;
 
 				function pad(s: string, len: number): string {
@@ -239,16 +239,16 @@ export default function (pi: ExtensionAPI) {
 
 						// Help
 						const help = [
-							`${theme.fg("accent", "↑↓")} navigate`,
-							`${theme.fg("accent", "Tab")} switch mode`,
-							`${theme.fg("accent", "d")} delete`,
-							`${theme.fg("accent", "Enter")} confirm`,
+							`${theme.fg("accent", "↑↓")} nav`,
+							`${theme.fg("accent", "Tab")} mode`,
+							`${theme.fg("accent", "d")} del`,
+							`${theme.fg("accent", "↵")} ok`,
 							`${theme.fg("accent", "Esc")} cancel`,
 						].join(
-							theme.fg("dim", "  ·  ")
+							theme.fg("dim", " · ")
 						);
 						lines.push(
-							row(`  ${help}`)
+							row(` ${help}`)
 						);
 
 						// Bottom border
@@ -329,7 +329,13 @@ export default function (pi: ExtensionAPI) {
 					},
 				};
 			},
-			{ overlay: true }
+			{
+				overlay: true,
+				overlayOptions: {
+					anchor: "center" as any,
+					width: BOX_WIDTH + 2,
+				},
+			}
 		);
 
 		editingQueue = false;
