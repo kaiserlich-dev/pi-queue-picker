@@ -1,4 +1,4 @@
-# pi-queue-picker
+# @kaiserlich-dev/pi-queue-picker
 
 A [pi](https://github.com/mariozechner/pi) extension that lets you choose between **Steer** and **Follow-up** when queuing messages while the agent is busy.
 
@@ -9,7 +9,7 @@ By default, pressing Enter while the agent is working queues your message as a "
 - **Steer** — interrupt and redirect the agent
 - **Follow-up** — queue for after the current task finishes
 
-Follow-up messages are **editable** — they're held in an internal buffer until the agent finishes, so you can change your mind before they're delivered.
+Queued messages are **editable** — both steer and follow-up items are held in an internal buffer, so you can change mode and order before delivery.
 
 ## Usage
 
@@ -23,44 +23,50 @@ When the agent is idle, Enter submits normally. When the agent is busy:
 
 The picker remembers your last chosen mode as the default.
 
-### Editing queued follow-ups
+### Editing queued messages
 
-Follow-up messages stay in an editable buffer until the agent finishes. To edit them:
+Queued messages stay in an editable buffer until the agent finishes. To edit them:
 
 - Press **Ctrl+J** or type `/edit-queue`
-- A floating popup overlay appears showing all buffered follow-ups
+- A floating popup overlay appears showing all buffered queue items (steer + follow-up)
 - **↑↓** to navigate between messages
 - **Tab** to toggle mode (follow-up ↔ steer)
+- **j / k** to move a message up/down (reorder)
 - **d** to delete a message
 - **Enter** to confirm changes
 - **Escape** to cancel
 
-Messages toggled to **Steer** are sent immediately when you confirm. Deleted messages are discarded.
+Messages keep their selected mode and queue order when you confirm. Deleted messages are discarded.
 
-A widget above the editor shows buffered follow-ups:
+A widget above the editor shows buffered queue items:
 ```
-  📋 Follow-up: also check the tests
+  ⚡ Steer: also check the tests
   📋 Follow-up: and update the docs
-  ↳ Ctrl+J to edit queue
+  ↳ Ctrl+J edit queue · j/k reorder
 ```
 
 ### How delivery works
 
-- **Steer** messages are sent to pi immediately (they interrupt the agent)
-- **Follow-up** messages are held in the extension's buffer and flushed one at a time when the agent finishes (`agent_end` event)
-- If the agent finishes while the picker is shown, follow-ups are flushed immediately after selection
+- Both **Steer** and **Follow-up** messages are buffered while the agent is busy
+- Queue items are flushed one at a time when the agent finishes (`agent_end` event)
+- You can reorder items and toggle mode before they are sent
+- If the agent finishes while the picker is shown, the first queued item is flushed immediately after selection
 
 ## Install
 
-Add to your `~/.pi/settings.json`:
+### npm (recommended)
 
-```json
-{
-  "packages": [
-    "github:kaiserlich-dev/pi-queue-picker"
-  ]
-}
+```bash
+pi install npm:@kaiserlich-dev/pi-queue-picker
 ```
+
+### git (alternative)
+
+```bash
+pi install git:github.com/kaiserlich-dev/pi-queue-picker
+```
+
+> By default this writes to `~/.pi/agent/settings.json`. Use `-l` to install into `.pi/settings.json` for a project.
 
 Then restart pi or run `/reload`.
 
