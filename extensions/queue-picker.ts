@@ -60,10 +60,14 @@ export default function (pi: ExtensionAPI) {
 	 */
 	function sendToPi(
 		text: string,
-		_isIdle: boolean,
+		isIdle: boolean,
 		mode: "steer" | "followUp"
 	) {
-		pi.sendUserMessage(text, { deliverAs: mode });
+		if (isIdle) {
+			pi.sendUserMessage(text);
+		} else {
+			pi.sendUserMessage(text, { deliverAs: mode });
+		}
 	}
 
 	function flushOneQueuedMessage(isIdle: boolean) {
