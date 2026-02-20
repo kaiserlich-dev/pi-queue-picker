@@ -466,22 +466,27 @@ export default function (pi: ExtensionAPI) {
 
 		lastMode = mode;
 
-		buffer.push({
-			text: event.text,
-			mode,
-			id: nextId(),
-		});
-		updateWidget();
-		ctx.ui.notify(
-			mode === "steer"
-				? `Queued steer: ${event.text}`
-				: `Queued follow-up: ${event.text}`,
-			"info"
-		);
+		if (mode === "steer") {
+			// Send immediately to interrupt the agent
+			pi.sendUserMessage(event.text, { deliverAs: "steer" });
+			ctx.ui.notify(`Steer: ${event.text}`, "info");
+		} else {
+			// Buffer follow-ups for delivery after agent finishes
+			buffer.push({
+				text: event.text,
+				mode,
+				id: nextId(),
+			});
+			updateWidget();
+			ctx.ui.notify(
+				`Queued follow-up: ${event.text}`,
+				"info"
+			);
 
-		// If agent became idle while picker was shown, flush immediately
-		if (ctx.isIdle()) {
-			flushOneQueuedMessage(true);
+			// If agent became idle while picker was shown, flush immediately
+			if (ctx.isIdle()) {
+				flushOneQueuedMessage(true);
+			}
 		}
 
 		return { action: "handled" as const };
