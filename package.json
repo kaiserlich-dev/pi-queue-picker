@@ -1,9 +1,12 @@
 {
   "name": "@kaiserlich-dev/pi-queue-picker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pick between steering and follow-up when queuing messages in pi",
   "keywords": [
-    "pi-package"
+    "pi-package",
+    "pi-coding-agent",
+    "queue",
+    "message-buffer"
   ],
   "license": "MIT",
   "repository": {
