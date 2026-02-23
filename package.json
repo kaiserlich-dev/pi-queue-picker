@@ -33,6 +33,7 @@
     "test:regression": "bash ./scripts/test-regression-steer-injection.sh"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
