@@ -15,6 +15,7 @@
   },
   "files": [
     "extensions",
+    "!extensions/__tests__",
     "README.md",
     "LICENSE"
   ],
