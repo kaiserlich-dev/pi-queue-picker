@@ -82,6 +82,13 @@ pi install git:github.com/kaiserlich-dev/pi-queue-picker
 
 Then restart pi or run `/reload`.
 
+## Development
+
+```bash
+# Run locally without installing
+pi -e ./extensions/queue-picker.ts
+```
+
 ## Compatibility
 
 Works alongside other extensions that customize the editor (e.g. `pi-powerline-footer`). Uses the `input` event API instead of replacing the editor component.
