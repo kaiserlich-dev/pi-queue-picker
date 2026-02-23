@@ -16,8 +16,8 @@ Queued messages are **editable** — both steer and follow-up items are held in 
 When the agent is idle, Enter submits normally. When the agent is busy:
 
 1. Type your message and press **Enter**
-2. A picker appears: `● Steer  ○ Follow-up`
-3. **Tab** to switch between modes
+2. A centered delivery popup appears with **Steer** and **Follow-up** options
+3. **Tab** or **↑↓** to switch between modes
 4. **Enter** to send with the selected mode
 5. **Escape** to cancel (restores your text)
 
@@ -32,9 +32,10 @@ Queued messages stay in an editable buffer until the agent finishes. To edit the
 - **↑↓** to navigate between messages
 - **Tab** to toggle mode (follow-up ↔ steer)
 - **j / k** to move a message up/down (reorder)
-- **d** to delete a message
-- **Enter** to confirm changes
-- **Escape** to cancel
+- **e** to edit the selected message in an inline text box
+- **d** or **Delete** to remove the selected message
+- **Enter** to confirm queue changes (or save while editing)
+- **Escape** to cancel (or exit edit mode)
 
 Messages keep their selected mode and queue order when you confirm. Deleted messages are discarded.
 
@@ -42,7 +43,7 @@ A widget above the editor shows buffered queue items:
 ```
   ⚡ Steer: also check the tests
   📋 Follow-up: and update the docs
-  ↳ Ctrl+J edit queue · j/k reorder
+  ↳ Ctrl+J queue editor · e edit · d delete · j/k move
 ```
 
 ### How delivery works
