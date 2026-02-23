@@ -20,7 +20,7 @@
   ],
   "pi": {
     "extensions": [
-      "./extensions"
+      "./extensions/queue-picker.ts"
     ],
     "image": "https://raw.githubusercontent.com/kaiserlich-dev/pi-queue-picker/main/assets/preview.png"
   },
