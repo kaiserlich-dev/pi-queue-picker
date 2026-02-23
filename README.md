@@ -9,7 +9,7 @@ By default, pressing Enter while the agent is working queues your message as a "
 - **Steer** — interrupt and redirect the agent
 - **Follow-up** — queue for after the current task finishes
 
-Queued messages are **editable** — both steer and follow-up items are held in an internal buffer, so you can change mode and order before delivery.
+Queued follow-ups are **editable** in an internal buffer, so you can change mode and order before delivery.
 
 ## Usage
 
@@ -48,10 +48,21 @@ A widget above the editor shows buffered queue items:
 
 ### How delivery works
 
-- Both **Steer** and **Follow-up** messages are buffered while the agent is busy
-- Queue items are flushed one at a time when the agent finishes (`agent_end` event)
+- **Steer** messages are sent immediately (interrupt current task)
+- **Follow-up** messages are buffered and flushed one at a time when the agent finishes (`agent_end` event)
 - You can reorder items and toggle mode before they are sent
+- If you change a queued item to **Steer** in the queue editor while the agent is busy, it is injected immediately after you save
 - If the agent finishes while the picker is shown, the first queued item is flushed immediately after selection
+
+### Regression test
+
+Run the steer-injection regression test:
+
+```bash
+npm run test:regression
+```
+
+This launches pi in tmux with the local extension, reproduces the queue-edit toggle flow, and asserts that changing a queued item to **Steer** injects it immediately while the agent is still busy.
 
 ## Install
 

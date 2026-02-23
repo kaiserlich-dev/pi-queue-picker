@@ -78,6 +78,18 @@ export default function (pi: ExtensionAPI) {
 		updateWidget();
 	}
 
+	/**
+	 * While the agent is busy, steer items should interrupt immediately.
+	 * Used after editing/toggling queued entries to "steer".
+	 */
+	function flushOneSteerWhileBusy() {
+		const steerIndex = buffer.findIndex((m) => m.mode === "steer");
+		if (steerIndex === -1) return;
+		const [steerMsg] = buffer.splice(steerIndex, 1);
+		sendToPi(steerMsg.text, false, "steer");
+		updateWidget();
+	}
+
 	function updateWidget() {
 		if (!uiRef) return;
 		if (buffer.length === 0) {
@@ -367,6 +379,8 @@ export default function (pi: ExtensionAPI) {
 
 		if (ctx.isIdle() && buffer.length > 0) {
 			flushOneQueuedMessage(true);
+		} else if (!ctx.isIdle()) {
+			flushOneSteerWhileBusy();
 		}
 	}
 

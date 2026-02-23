@@ -29,7 +29,8 @@
     "@mariozechner/pi-tui": "*"
   },
   "scripts": {
-    "publish:pi": "bash ./scripts/publish.sh"
+    "publish:pi": "bash ./scripts/publish.sh",
+    "test:regression": "bash ./scripts/test-regression-steer-injection.sh"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
