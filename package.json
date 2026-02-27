@@ -1,6 +1,6 @@
 {
   "name": "@kaiserlich-dev/pi-queue-picker",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Pick between steering and follow-up when queuing messages in pi",
   "keywords": [
     "pi-package",

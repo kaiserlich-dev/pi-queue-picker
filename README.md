@@ -23,6 +23,8 @@ When the agent is idle, Enter submits normally. When the agent is busy:
 
 The picker remembers your last chosen mode as the default.
 
+Slash commands (for example `/model`, `/settings`, `/skill:name`, or `/prompt-template`) bypass the picker while busy so interactive command UIs still open normally.
+
 ### Editing queued messages
 
 Queued messages stay in an editable buffer until the agent finishes. To edit them:

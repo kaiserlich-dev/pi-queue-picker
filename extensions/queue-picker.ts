@@ -45,6 +45,22 @@ function isLimitedTerminal(): boolean {
 	return false;
 }
 
+/**
+ * Commands like /model, /settings, /skill:name should bypass the delivery picker.
+ * They are interactive control flow, not chat content.
+ */
+export function shouldBypassPicker(text: string): boolean {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith("/")) return false;
+
+	const firstToken = trimmed.split(/\s+/, 1)[0];
+	if (firstToken === "/") return true;
+
+	// Commands are one slash-prefixed token without extra slashes, e.g. /model, /skill:name
+	if (firstToken.slice(1).includes("/")) return false;
+	return /^\/[a-z0-9:_-]+$/i.test(firstToken);
+}
+
 const PICKER_WIDTH = 72;
 const BOX_WIDTH = 76;
 
@@ -171,6 +187,10 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		if (!ctx.hasUI || !event.text.trim()) {
+			return { action: "continue" as const };
+		}
+
+		if (shouldBypassPicker(event.text)) {
 			return { action: "continue" as const };
 		}
 
