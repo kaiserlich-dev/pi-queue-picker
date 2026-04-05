@@ -72,25 +72,23 @@ export default function (pi: ExtensionAPI) {
 
 	// --- Helpers ---
 
-	function sendToPi(text: string, isIdle: boolean, mode: PickerMode) {
-		if (isIdle) {
-			pi.sendUserMessage(text);
-		} else {
-			pi.sendUserMessage(text, { deliverAs: mode });
-		}
+	function sendToPi(text: string, mode: PickerMode) {
+		// Always specify deliverAs for safety — even at agent_end another
+		// extension handler may have already started a new turn.
+		pi.sendUserMessage(text, { deliverAs: mode });
 	}
 
-	function flushOneQueuedMessage(isIdle: boolean) {
+	function flushOneQueuedMessage() {
 		const next = shiftNext(buffer);
 		if (!next) return;
-		sendToPi(next.text, isIdle, next.mode);
+		sendToPi(next.text, next.mode);
 		updateWidget(uiRef, buffer);
 	}
 
 	function flushOneSteerWhileBusy() {
 		const steerMsg = shiftNextSteer(buffer);
 		if (!steerMsg) return;
-		sendToPi(steerMsg.text, false, "steer");
+		sendToPi(steerMsg.text, "steer");
 		updateWidget(uiRef, buffer);
 	}
 
@@ -158,7 +156,7 @@ export default function (pi: ExtensionAPI) {
 		updateWidget(uiRef, buffer);
 
 		if (ctx.isIdle() && buffer.length > 0) {
-			flushOneQueuedMessage(true);
+			flushOneQueuedMessage();
 		} else if (!ctx.isIdle()) {
 			flushOneSteerWhileBusy();
 		}
@@ -171,14 +169,9 @@ export default function (pi: ExtensionAPI) {
 		clearBuffer();
 	});
 
-	pi.on("session_switch", (_event, ctx) => {
-		uiRef = ctx.ui;
-		clearBuffer();
-	});
-
-	pi.on("agent_end", async (_event, ctx) => {
+	pi.on("agent_end", async (_event, _ctx) => {
 		if (editingQueue || buffer.length === 0) return;
-		flushOneQueuedMessage(ctx.isIdle());
+		flushOneQueuedMessage();
 	});
 
 	pi.on("input", async (event, ctx) => {
@@ -244,7 +237,7 @@ export default function (pi: ExtensionAPI) {
 		lastMode = mode;
 
 		if (mode === "steer") {
-			pi.sendUserMessage(event.text, { deliverAs: "steer" });
+			sendToPi(event.text, "steer");
 			ctx.ui.notify(`Steer: ${event.text}`, "info");
 		} else {
 			addMessage(buffer, {
@@ -259,7 +252,7 @@ export default function (pi: ExtensionAPI) {
 			);
 
 			if (ctx.isIdle()) {
-				flushOneQueuedMessage(true);
+				flushOneQueuedMessage();
 			}
 		}
 
