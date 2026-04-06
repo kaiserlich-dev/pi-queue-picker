@@ -72,23 +72,27 @@ export default function (pi: ExtensionAPI) {
 
 	// --- Helpers ---
 
-	function sendToPi(text: string, mode: PickerMode) {
-		// Always specify deliverAs for safety — even at agent_end another
-		// extension handler may have already started a new turn.
-		pi.sendUserMessage(text, { deliverAs: mode });
-	}
-
+	/**
+	 * Flush the next queued message.
+	 *
+	 * Sends without deliverAs to trigger a new turn immediately.
+	 * When called from agent_end, must be deferred (setTimeout) because
+	 * the agent hasn’t fully transitioned to idle yet at event time.
+	 */
 	function flushOneQueuedMessage() {
 		const next = shiftNext(buffer);
 		if (!next) return;
-		sendToPi(next.text, next.mode);
+		pi.sendUserMessage(next.text);
 		updateWidget(uiRef, buffer);
 	}
 
+	/**
+	 * Inject the first steer from the buffer while the agent is busy.
+	 */
 	function flushOneSteerWhileBusy() {
 		const steerMsg = shiftNextSteer(buffer);
 		if (!steerMsg) return;
-		sendToPi(steerMsg.text, "steer");
+		pi.sendUserMessage(steerMsg.text, { deliverAs: "steer" });
 		updateWidget(uiRef, buffer);
 	}
 
@@ -171,7 +175,10 @@ export default function (pi: ExtensionAPI) {
 
 	pi.on("agent_end", async (_event, _ctx) => {
 		if (editingQueue || buffer.length === 0) return;
-		flushOneQueuedMessage();
+		// Defer to next tick — at agent_end the agent hasn’t fully
+		// transitioned to idle, so sendUserMessage would throw or
+		// get stuck in a delivery queue that never drains.
+		setTimeout(() => flushOneQueuedMessage(), 0);
 	});
 
 	pi.on("input", async (event, ctx) => {
@@ -237,7 +244,7 @@ export default function (pi: ExtensionAPI) {
 		lastMode = mode;
 
 		if (mode === "steer") {
-			sendToPi(event.text, "steer");
+			pi.sendUserMessage(event.text, { deliverAs: "steer" });
 			ctx.ui.notify(`Steer: ${event.text}`, "info");
 		} else {
 			addMessage(buffer, {
