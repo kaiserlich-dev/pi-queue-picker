@@ -55,7 +55,7 @@ wait_for() {
 # 1) Start pi with local extension source
 
 tmux new-session -d -s "$SESSION" "cd '$ROOT_DIR' && pi -e ./extensions/queue-picker.ts"
-if ! wait_for "Loaded" "$BOOT_FILE" 30; then
+if ! wait_for "claude|anthropic|sonnet|opus|gemini" "$BOOT_FILE" 30; then
 	echo "FAIL: pi did not boot in time"
 	echo "Evidence: $BOOT_FILE"
 	exit 1
