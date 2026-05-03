@@ -1,6 +1,6 @@
 {
   "name": "@kaiserlich-dev/pi-queue-picker",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Pick between steering and follow-up when queuing messages in pi",
   "keywords": [
     "pi-package",
@@ -29,14 +29,16 @@
     "image": "https://raw.githubusercontent.com/kaiserlich-dev/pi-queue-picker/main/assets/preview.png"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "^0.65.0",
-    "@mariozechner/pi-tui": "^0.65.0"
+    "@mariozechner/pi-coding-agent": ">=0.65.0",
+    "@mariozechner/pi-tui": ">=0.65.0"
   },
   "scripts": {
     "publish:pi": "bash ./scripts/publish.sh",
     "test:regression": "bash ./scripts/test-regression-steer-injection.sh"
   },
   "devDependencies": {
+    "@mariozechner/pi-coding-agent": "^0.72.1",
+    "@mariozechner/pi-tui": "^0.72.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
